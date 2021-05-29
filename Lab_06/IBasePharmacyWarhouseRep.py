@@ -1,28 +1,23 @@
 from PharmacyWarhouse import PharmacyWarhouse
-import psycopg2
-from psycopg2 import Error
-from psycopg2 import sql
+from DBConnection import DBConnection
+from DBConnection import Error
+from DBConnection import sql
 
-class IBasePharmacyWarhouseRep:
-
-    def __init__(self):
-        self.__connection_string = 'user=postgres password=INDIGORED host=127.0.0.1 port=5432 dbname=p_warhouse'
+class IBasePharmacyWarhouseRep(DBConnection):
     
     def GetAll(self):
         try:
-            connection = psycopg2.connect(self.__connection_string)
-            cursor = connection.cursor()
-            cursor.execute('SELECT * FROM pharmacy_warhouse;')
-            records = cursor.fetchall()
+            self.start_connection()
+            self.cursor.execute('SELECT * FROM pharmacy_warhouse;')
+            records = self.cursor.fetchall()
 
             p_warhouses = list()
 
             for record in records:
                 p_warhouses.append(PharmacyWarhouse(id = record[0], op_hours = record[1], adr = record[2]))
 
-            if connection:
-                cursor.close()
-                connection.close()
+            if self.connection:
+                self.finish_connection()
                 return p_warhouses
 
         except (Exception, Error) as error:
@@ -30,28 +25,26 @@ class IBasePharmacyWarhouseRep:
 
     def Append(self, p_warhouse_object):
         try:
-            connection = psycopg2.connect(self.__connection_string)
-            cursor = connection.cursor()
+            self.start_connection()
 
             append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) VALUES ({}, {});').format(
-                sql.Literal(str(p_warhouse_object.opening_hours)),
-                sql.Literal(str(p_warhouse_object.address)))
+                sql.Literal(p_warhouse_object.opening_hours),
+                sql.Literal(p_warhouse_object.address))
             
-            cursor.execute(append_query)
-            connection.commit()
+            self.cursor.execute(append_query)
+            self.connection.commit()
 
             get_query = sql.SQL('SELECT * FROM pharmacy_warhouse WHERE opening_hours = {} AND address = {};').format(
                 sql.Literal(p_warhouse_object.opening_hours),
                 sql.Literal(p_warhouse_object.address))
 
-            cursor.execute(get_query)
+            self.cursor.execute(get_query)
 
-            record = cursor.fetchone()
+            record = self.cursor.fetchone()
             new_object = PharmacyWarhouse(id = record[0], op_hours = record[1], adr = record[2])
 
-            if connection:
-                cursor.close()
-                connection.close()
+            if self.connection:
+                self.finish_connection()
                 return new_object
                 
         except (Exception, Error) as error:
@@ -59,19 +52,17 @@ class IBasePharmacyWarhouseRep:
 
     def Delete(self, p_warhouse_object):
         try:
-            connection = psycopg2.connect(self.__connection_string)
-            cursor = connection.cursor()
+            self.start_connection()
 
             delete_query = sql.SQL('DELETE FROM pharmacy_warhouse WHERE address = {} AND opening_hours = {};').format(
                 sql.Literal(p_warhouse_object.address),
                 sql.Literal(p_warhouse_object.opening_hours))
 
-            cursor.execute(delete_query)
-            connection.commit()
+            self.cursor.execute(delete_query)
+            self.connection.commit()
 
-            if connection:
-                cursor.close()
-                connection.close()
+            if self.connection:
+                self.finish_connection()
                 return 0
             
         except (Exception, Error) as error:
@@ -79,20 +70,18 @@ class IBasePharmacyWarhouseRep:
 
     def Update(self, p_warhouse_object):
         try:
-            connection = psycopg2.connect(self.__connection_string)
-            cursor = connection.cursor()
+            self.start_connection()
 
             update_query = sql.SQL('UPDATE pharmacy_warhouse SET address = {}, opening_hours = {} WHERE id = {};').format(
                 sql.Literal(p_warhouse_object.address),
                 sql.Literal(p_warhouse_object.opening_hours),
                 sql.Literal(p_warhouse_object.id))
 
-            cursor.execute(update_query)
-            connection.commit()
+            self.cursor.execute(update_query)
+            self.connection.commit()
 
-            if connection:
-                cursor.close()
-                connection.close()
+            if self.connection:
+                self.finish_connection()
                 return 0
 
         except (Exception, Error) as error:

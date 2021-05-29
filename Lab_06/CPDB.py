@@ -1,4 +1,4 @@
-from IPWRepository import IPWRepository
+from IBasePharmacyWarhouseRep import IBasePharmacyWarhouseRep
 from PharmacyWarhouse import PharmacyWarhouse
 
 test = IBasePharmacyWarhouseRep()
