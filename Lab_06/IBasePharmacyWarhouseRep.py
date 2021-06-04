@@ -1,7 +1,5 @@
 from PharmacyWarhouse import PharmacyWarhouse
-from DBConnection import DBConnection
-from DBConnection import Error
-from DBConnection import sql
+from DBConnection import DBConnection, sql, Error
 
 class IBasePharmacyWarhouseRep(DBConnection):
     
@@ -14,7 +12,7 @@ class IBasePharmacyWarhouseRep(DBConnection):
             p_warhouses = list()
 
             for record in records:
-                p_warhouses.append(PharmacyWarhouse(id = record[0], op_hours = record[1], adr = record[2]))
+                p_warhouses.append(PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2]))
 
             if self.connection:
                 self.finish_connection()
@@ -23,29 +21,22 @@ class IBasePharmacyWarhouseRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Append(self, p_warhouse_object):
+    def Append(self, o_opening_hours, o_address):
         try:
             self.start_connection()
 
             append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) VALUES ({}, {});').format(
-                sql.Literal(p_warhouse_object.opening_hours),
-                sql.Literal(p_warhouse_object.address))
+                sql.Literal(o_opening_hours),
+                sql.Literal(o_address))
             
             self.cursor.execute(append_query)
             self.connection.commit()
 
-            get_query = sql.SQL('SELECT * FROM pharmacy_warhouse WHERE opening_hours = {} AND address = {};').format(
-                sql.Literal(p_warhouse_object.opening_hours),
-                sql.Literal(p_warhouse_object.address))
-
-            self.cursor.execute(get_query)
-
-            record = self.cursor.fetchone()
-            new_object = PharmacyWarhouse(id = record[0], op_hours = record[1], adr = record[2])
+            new_pharmacy_warhouse = PharmacyWarhouse(id=self.cursor.lastrowid, op_hours=o_opening_hours, adr=o_address)
 
             if self.connection:
                 self.finish_connection()
-                return new_object
+                return new_pharmacy_warhouse
                 
         except (Exception, Error) as error:
             return error
@@ -54,9 +45,8 @@ class IBasePharmacyWarhouseRep(DBConnection):
         try:
             self.start_connection()
 
-            delete_query = sql.SQL('DELETE FROM pharmacy_warhouse WHERE address = {} AND opening_hours = {};').format(
-                sql.Literal(p_warhouse_object.address),
-                sql.Literal(p_warhouse_object.opening_hours))
+            delete_query = sql.SQL('DELETE FROM pharmacy_warhouse WHERE id = {};').format(
+                sql.Literal(p_warhouse_object.id))
 
             self.cursor.execute(delete_query)
             self.connection.commit()
@@ -86,4 +76,4 @@ class IBasePharmacyWarhouseRep(DBConnection):
 
         except (Exception, Error) as error:
             return error
-            
+

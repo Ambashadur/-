@@ -1,14 +1,14 @@
-import PharmacyWarhouse
-import WorkerPostion
+from PharmacyWarhouse import PharmacyWarhouse
+from WorkerPosition import WorkerPosition
 
 class Worker:
 
-    def __init__(self, id, name, surname, pos, p_warhouse):
+    def __init__(self, name:str, surname:str, pos:WorkerPosition, p_warhouse:PharmacyWarhouse, id:int=1):
         self.__id = id
         self.__name = name
         self.__surname = surname
         self.__position = pos
-        self.__pharmacy_warhouse
+        self.__pharmacy_warhouse = p_warhouse
 
     @property
     def id(self):

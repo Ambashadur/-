@@ -1,6 +1,6 @@
 class WorkerPosition:
 
-    def __init__(self, id, pos):
+    def __init__(self, pos:str, id:int=1):
         self.__id = id
         self.__position = pos
 

@@ -1,5 +1,5 @@
 from WorkerPosition import WorkerPosition
-from DBConnection import DBConnection
+from DBConnection import DBConnection, sql, Error
 
 class IBaseWorkerPositionRep(DBConnection):
 
@@ -12,7 +12,7 @@ class IBaseWorkerPositionRep(DBConnection):
             worker_position = list()
 
             for record in records:
-                worker_position.append(WorkerPosition(id = record[0], pos = record[1]))
+                worker_position.append(WorkerPosition(id=record[0], pos=record[1]))
 
             if self.connection:
                 self.finish_connection()
@@ -21,27 +21,21 @@ class IBaseWorkerPositionRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Append(self, work_pos_object):
+    def Append(self, o_position):
         try:
             self.start_connection()
 
             append_query = sql.SQL('INSERT INTO worker_position(position) VALUES ({});').format(
-                sql.Literal(work_pos_object.position))
+                sql.Literal(o_position))
 
             self.cursor.execute(append_query)
             self.connection.commit()
 
-            get_query = sql.SQL('SELECT * FROM worker_position WHERE position = {};').format(
-                sql.Literal(work_pos_object.position))
-
-            self.cursor.execute(get_query)
-
-            recod = self.cursor.fetchone()
-            new_object = WorkerPosition(id = record[0], pos = record[1])
+            new_worker_position = WorkerPosition(id=self.cursor.lastrowid, pos=o_position)
 
             if self.connection:
                 self.finish_connection()
-                return new_object
+                return new_worker_position
 
         except (Exception, Error) as error:
             return error
@@ -50,8 +44,8 @@ class IBaseWorkerPositionRep(DBConnection):
         try:
             self.start_connection()
 
-            delete_query = sql.SQL('DELETE FROM worker_position WHERE position = {};').format(
-                sql.Literal(work_pos_object.position))
+            delete_query = sql.SQL('DELETE FROM worker_position WHERE id = {};').format(
+                sql.Literal(work_pos_object.id))
 
             self.cursor.execute(delete_query)
             self.connection.commit()
@@ -71,7 +65,7 @@ class IBaseWorkerPositionRep(DBConnection):
                 sql.Literal(work_pos_object.position),
                 sql.Literal(work_pos_object.id))
 
-            sqlf.cursor.execute(update_query)
+            self.cursor.execute(update_query)
             self.connection.commit()
 
             if self.connection:
@@ -80,7 +74,3 @@ class IBaseWorkerPositionRep(DBConnection):
 
         except (Exception, Error) as error:
             return error
-
-            
-
-    
