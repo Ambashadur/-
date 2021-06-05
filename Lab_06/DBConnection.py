@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2 import Error
 from psycopg2 import sql
 
+
 class DBConnection:
     def __init__(self):
         self.__connection_string = 'user=postgres password=INDIGORED host=127.0.0.1 port=5432 dbname=p_warhouse'
