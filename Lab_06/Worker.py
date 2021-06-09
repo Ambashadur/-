@@ -3,7 +3,7 @@ from WorkerPosition import WorkerPosition
 
 class Worker:
 
-    def __init__(self, name:str, surname:str, pos:WorkerPosition, p_warhouse:PharmacyWarhouse, id:int=1):
+    def __init__(self, name: str, surname: str, pos: WorkerPosition, p_warhouse: PharmacyWarhouse, id: int = 1):
         self.__id = id
         self.__name = name
         self.__surname = surname

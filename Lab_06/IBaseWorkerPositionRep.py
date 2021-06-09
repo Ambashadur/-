@@ -1,18 +1,19 @@
 from WorkerPosition import WorkerPosition
 from DBConnection import DBConnection, sql, Error
 
+
 class IBaseWorkerPositionRep(DBConnection):
 
-    def GetAll(self):
+    def GetAll(self) -> dict:
         try:
             self.start_connection()
-            self.cursor.execute('SELECT * FROM worker_position')
+            self.cursor.execute('SELECT * FROM worker_position ORDER BY id')
             records = self.cursor.fetchall()
 
-            worker_position = list()
+            worker_position = dict()
 
             for record in records:
-                worker_position.append(WorkerPosition(id=record[0], pos=record[1]))
+                worker_position[record[0]] = WorkerPosition(id=record[0], pos=record[1])
 
             if self.connection:
                 self.finish_connection()
@@ -21,7 +22,27 @@ class IBaseWorkerPositionRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Append(self, o_position):
+    def GetById(self, id: int) -> WorkerPosition:
+        try:
+            self.start_connection()
+
+            get_query = sql.SQL('SELECT * FROM worker_position WHERE id = {}').format(
+                sql.Literal(id)
+            )
+
+            self.cursor.execute(get_query)
+            record = self.cursor.fetchone()
+
+            worker_position = WorkerPosition(id=record[0], pos=record[1])
+
+            if self.connection:
+                self.finish_connection()
+                return worker_position
+
+        except (Exception, Error) as error:
+            return error
+
+    def Append(self, o_position: str) -> WorkerPosition:
         try:
             self.start_connection()
 
@@ -40,7 +61,7 @@ class IBaseWorkerPositionRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Delete(self, work_pos_object):
+    def Delete(self, work_pos_object: WorkerPosition) -> int:
         try:
             self.start_connection()
 
@@ -57,7 +78,7 @@ class IBaseWorkerPositionRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Update(self, work_pos_object):
+    def Update(self, work_pos_object: WorkerPosition) -> int:
         try:
             self.start_connection()
 

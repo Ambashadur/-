@@ -1,23 +1,23 @@
-from Worker import Worker
+from Worker import Worker, PharmacyWarhouse, WorkerPosition
 from DBConnection import DBConnection, sql, Error
 
 
 class IBaseWorkerRep(DBConnection):
 
-    def GetAll(self, p_warhouse_obj, wor_pos_list):
+    def GetAll(self, p_warhouse_obj: PharmacyWarhouse, wor_pos_dict: dict) -> dict:
         try:
             self.start_connection()
 
-            get_query = sql.SQL('SELECT * FROM worker WHERE id_warhouse = {};').format(
+            get_query = sql.SQL('SELECT * FROM worker WHERE id_warhouse = {} ORDER BY id;').format(
                 sql.Literal(p_warhouse_obj.id))
 
             self.cursor.execute(get_query)
             records = self.cursor.fetchall()
-            workers = list()
+            workers = dict()
 
             for record in records:
-                workers.append(Worker(id=record[0], name=record[1], surname=record[2],
-                                      p_warhouse=p_warhouse_obj, pos=wor_pos_list[record[4]]))
+                workers[record[0]] = Worker(id=record[0], name=record[1], surname=record[2],
+                                            p_warhouse=p_warhouse_obj, pos=wor_pos_dict[record[4]])
 
             if self.connection:
                 self.finish_connection()
@@ -26,7 +26,28 @@ class IBaseWorkerRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Append(self, o_name, o_surname, o_pharmacy_warhouse, o_position):
+    def GetById(self, id: int, pw_object: PharmacyWarhouse, wor_pos_dict: dict) -> Worker:
+        try:
+            self.start_connection()
+
+            get_query = sql.SQL('SELECT * FROM worker WHERE id = {}').format(
+                sql.Literal(id)
+            )
+
+            self.cursor.execute(get_query)
+            record = self.cursor.fetchone()
+
+            worker = Worker(id=record[0], name=record[1], surname=record[2],
+                            p_warhouse=pw_object, pos=wor_pos_dict[record[4]])
+
+            if self.connection:
+                self.finish_connection()
+                return worker
+
+        except (Exception, Error) as error:
+            return error
+
+    def Append(self, o_name: str, o_surname: str, o_pharmacy_warhouse: PharmacyWarhouse, o_position: WorkerPosition):
         try:
             self.start_connection()
 
@@ -51,7 +72,7 @@ class IBaseWorkerRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Delete(self, worker_object):
+    def Delete(self, worker_object: Worker) -> int:
         try:
             self.start_connection()
 
@@ -68,7 +89,7 @@ class IBaseWorkerRep(DBConnection):
         except (Exception, Error) as error:
             return error
 
-    def Update(self, worker_object):
+    def Update(self, worker_object: Worker) -> int:
         try:
             self.start_connection()
 

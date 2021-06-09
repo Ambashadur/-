@@ -1,6 +1,6 @@
 class PharmacyWarhouse:
 
-    def __init__(self, op_hours:str, adr:str, id:int = 1):
+    def __init__(self, op_hours: str, adr: str, id: int = 1):
         self.__opening_hours = op_hours
         self.__address = adr
         self.__id = id
