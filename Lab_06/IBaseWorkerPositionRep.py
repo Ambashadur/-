@@ -46,13 +46,14 @@ class IBaseWorkerPositionRep(DBConnection):
         try:
             self.start_connection()
 
-            append_query = sql.SQL('INSERT INTO worker_position(position) VALUES ({});').format(
+            append_query = sql.SQL('INSERT INTO worker_position(position) VALUES ({}) RETURNING id;').format(
                 sql.Literal(o_position))
 
             self.cursor.execute(append_query)
+            wp_id = self.cursor.fetchone()
             self.connection.commit()
 
-            new_worker_position = WorkerPosition(id=self.cursor.lastrowid, pos=o_position)
+            new_worker_position = WorkerPosition(id=wp_id[0], pos=o_position)
 
             if self.connection:
                 self.finish_connection()

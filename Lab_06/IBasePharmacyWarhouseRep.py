@@ -46,15 +46,16 @@ class IBasePharmacyWarhouseRep(DBConnection):
         try:
             self.start_connection()
 
-            append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) VALUES ({}, {});').format(
+            append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) VALUES ({}, {}) RETURNING id;').format(
                 sql.Literal(o_opening_hours),
                 sql.Literal(o_address)
             )
             
             self.cursor.execute(append_query)
+            pw_id = self.cursor.fetchone()
             self.connection.commit()
 
-            new_pharmacy_warhouse = PharmacyWarhouse(id=self.cursor.lastrowid, op_hours=o_opening_hours, adr=o_address)
+            new_pharmacy_warhouse = PharmacyWarhouse(id=pw_id, op_hours=o_opening_hours, adr=o_address)
 
             if self.connection:
                 self.finish_connection()

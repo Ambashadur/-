@@ -1,36 +1,36 @@
 from IBasePharmacyWarhouseRep import IBasePharmacyWarhouseRep, PharmacyWarhouse
 from IBaseWorkerPositionRep import IBaseWorkerPositionRep, WorkerPosition
+from IBaseMedEquipRep import  IBaseMedEquipRep, MedicineEquipment
 from IBaseWorkerRep import IBaseWorkerRep, Worker
-from prompt_toolkit import PromptSession
-from prompt_toolkit.shortcuts import radiolist_dialog
-from prompt_toolkit.shortcuts import message_dialog
-from prompt_toolkit.shortcuts import input_dialog
+from prompt_toolkit.shortcuts import radiolist_dialog, message_dialog, input_dialog
+
 
 # Глобальные переменные для обращения к записям в базе данных
 pw_repository = IBasePharmacyWarhouseRep()
 wp_repository = IBaseWorkerPositionRep()
 w_repository = IBaseWorkerRep()
+me_repository = IBaseMedEquipRep()
 
 
 def main():
-    session = PromptSession()
-
     try:
         res = -1
         while res is not None:
             res = StartApp()
-
             if res == 0:
-                res = PrintPWarhouses()
+                res = PrintObjects(empty_message_text='Нет ни одного аптечного склада',
+                                   radio_title='Доступные аптечные склады',
+                                   radio_text='Какой склад выбрать?',
+                                   object_rep=pw_repository)
 
                 if res is not None:
                     PrintPWCommands(res)
+
             elif res == 1:
-                time = input_dialog(title='Изменение информации об аптечном складе',
+                time = input_dialog(title='Добавление аптченого склада',
                                     text='Часы работы:',
                                     ok_text='Далее',
-                                    cancel_text='Отменить',
-                                    ).run()
+                                    cancel_text='Отменить').run()
 
                 if time is None:
                     continue
@@ -46,7 +46,7 @@ def main():
                 if time is None:
                     continue
 
-                address = input_dialog(title='Изменение информации об аптечном складе',
+                address = input_dialog(title='Добавление аптечного склада',
                                        text='Часы работы: ' + time + '\nАдрес',
                                        ok_text='Принять',
                                        cancel_text='Отменить').run()
@@ -65,46 +65,58 @@ def main():
                     continue
 
                 new_object = pw_repository.Append(o_opening_hours=time, o_address=address)
-                if  not isinstance(new_object, PharmacyWarhouse):
+                if not isinstance(new_object, PharmacyWarhouse):
                     message_dialog(title='Ошибка',
                                    text=str(new_object),
                                    ok_text='Понятно').run()
                     continue
     except EOFError:
-        print('Error')
+        message_dialog(title='Ошибка',
+                       text='Почему-то возникла ошибка',
+                       ok_text='Понятно').run()
 
     message_dialog(title='Завершение программы',
                    text='До новых встреч!',
                    ok_text='Пока!').run()
 
 
-# Вывод всех аптечных складов
-def PrintPWarhouses() -> int:
+def PrintObjects(empty_message_text: str, radio_title: str, radio_text: str, object_rep, add_args: list = None) -> int:
+    object_print_list = list()
 
-    # Список кортежей для вывода в консоль
-    pw_print_list = list()
+    if isinstance(object_rep, IBaseWorkerRep):
+        object_dict = object_rep.GetAll(add_args[0], wp_repository.GetAll())
+    elif isinstance(object_rep, IBaseMedEquipRep):
+        object_dict = object_rep.GetAll(add_args[0].id)
+    else:
+        object_dict = object_rep.GetAll()
 
-    # Список обьектов PharmacyWarhouse, полученных из базы данных
-    pw_dict = pw_repository.GetAll()
-
-    if not isinstance(pw_dict, dict):
+    if not isinstance(object_dict, dict):
         message_dialog(title='Ошибка',
-                       text=str(pw_dict),
+                       text=str(object_dict),
                        ok_text='Понятно').run()
         return None
-
-    if len(pw_dict) == 0:
+    elif len(object_dict) == 0:
         message_dialog(title='Упс',
-                       text='Нет ни одного аптечного склада',
+                       text=empty_message_text,
                        ok_text='Понятно').run()
         return None
 
-    for key in pw_dict:
-        pw_print_list.append(tuple((key, pw_dict[key].address)))
+    if isinstance(object_rep, IBasePharmacyWarhouseRep):
+        for key in object_dict:
+            object_print_list.append(tuple((key, object_dict[key].address)))
+    elif isinstance(object_rep, IBaseWorkerPositionRep):
+        for key in object_dict:
+            object_print_list.append(tuple((key, object_dict[key].position)))
+    elif isinstance(object_rep, IBaseWorkerRep):
+        for key in object_dict:
+            object_print_list.append(tuple((key, object_dict[key].surname + '-' + object_dict[key].position.position)))
+    elif isinstance(object_rep, IBaseMedEquipRep):
+        for key in object_dict:
+            object_print_list.append(tuple((key, object_dict[key].name)))
 
-    result = radiolist_dialog(title='Доступные аптечные склады',
-                              text='Какой склад выбрать?',
-                              values=pw_print_list,
+    result = radiolist_dialog(title=radio_title,
+                              text=radio_text,
+                              values=object_print_list,
                               ok_text='Выбрать',
                               cancel_text='Назад'
                               ).run()
@@ -141,7 +153,9 @@ def PrintPWCommands(id_pw_object):
                                    (1, 'Изменить информацию об текущем складе'),
                                    (2, 'Показать список работников'),
                                    (3, 'Добавить работника'),
-                                   (4, 'Удалить текущий склад из списка'),
+                                   (4, 'Показать список медицинского оборудования'),
+                                   (5, 'Добавить медицинское оборудование'),
+                                   (6, 'Удалить текущий склад из списка'),
                                ],
                                ok_text='Выполнить',
                                cancel_text='Назад'
@@ -203,12 +217,18 @@ def PrintPWCommands(id_pw_object):
         elif res == 2:
             worker_result = 1
             while worker_result is not None:
-                worker_result = PrintWorkers(pw_object)
+                worker_result = PrintObjects(empty_message_text='В данном аптечном складе никто не работает',
+                                             radio_title='Список работников',
+                                             radio_text='Какого работника выбрать?',
+                                             object_rep=w_repository,
+                                             add_args=[
+                                                 pw_object
+                                             ])
 
                 if worker_result is not None:
                     PrintWCommands(worker_result, pw_object)
         elif res == 3:
-            new_name = input_dialog(title='Изменение информации об работнике',
+            new_name = input_dialog(title='Добавление работника',
                                     text='Имя:',
                                     ok_text='Далее',
                                     cancel_text='Отменить').run()
@@ -225,7 +245,7 @@ def PrintPWCommands(id_pw_object):
             if new_name is None:
                 continue
 
-            new_surname = input_dialog(title='Изменение информации об работнике',
+            new_surname = input_dialog(title='Добавление работника',
                                        text='Имя: ' + new_name + '\nФамилия:',
                                        ok_text='Далее',
                                        cancel_text='Отменить').run()
@@ -243,14 +263,17 @@ def PrintPWCommands(id_pw_object):
             if new_surname is None:
                 continue
 
-            new_wpos_id = PrintWPositions()
+            new_wpos_id = PrintObjects(empty_message_text='Почему-то нет профессий',
+                                       radio_title='Добавление работника',
+                                       radio_text='Имя: ' + new_name + '\nФамилия: ' + new_surname + '\nПрофессия:',
+                                       object_rep=wp_repository)
 
             if new_wpos_id is None:
                 continue
 
             new_object = w_repository.Append(o_name=new_name, o_surname=new_surname,
-                                                    o_position=wp_repository.GetById(new_wpos_id),
-                                                    o_pharmacy_warhouse=pw_object)
+                                             o_position=wp_repository.GetById(new_wpos_id),
+                                             o_pharmacy_warhouse=pw_object)
 
             if not isinstance(new_object, Worker):
                 message_dialog(title='Ошибка',
@@ -258,6 +281,76 @@ def PrintPWCommands(id_pw_object):
                                ok_text='Понятно').run()
                 continue
         elif res == 4:
+            me_result = 1
+            while me_result is not None:
+                me_result = PrintObjects(empty_message_text='На складе не медицинского оборудования',
+                                         radio_title='Список медицинского оборудования',
+                                         radio_text='Какое медицинское оборудование выбрать?',
+                                         object_rep=me_repository,
+                                         add_args=[pw_object])
+                if me_result is not None:
+                    PrintMECommands(me_result, pw_object)
+        elif res == 5:
+            new_name = input_dialog(title='Добавление медицинского оборудования',
+                                    text='Название:',
+                                    ok_text='Далее',
+                                    cancel_text='Отменить').run()
+
+            if new_name is None:
+                continue
+
+            new_price = input_dialog(title='Добавление медицинского оборудования',
+                                     text='Название: ' + new_name + '\nЦена:',
+                                     ok_text='Далее',
+                                     cancel_text='Отменить').run()
+
+            if new_price is None:
+                continue
+
+            while new_price is not None and not new_price.isdigit():
+                new_price = input_dialog(title='Ошибка',
+                                         text='Вы ввели неправильную цену\nНазвание: ' + new_name
+                                              + '\nЦена:',
+                                         ok_text='Далее',
+                                         cancel_text='Отменить').run()
+
+            if new_price is None:
+                continue
+
+            new_number = input_dialog(title='Добавление медецинского оборудования',
+                                      text='Название: ' + new_name + '\nЦена: ' + new_price
+                                           + '\nКоличество:',
+                                      ok_text='Принять',
+                                      cancel_text='Отменить').run()
+
+            if new_number is None:
+                continue
+
+            while new_number is not None and not new_number.isdigit():
+                new_number = input_dialog(title='Ошибка',
+                                          text='Вы ввели неправильное количество\nНазвание: ' + new_name
+                                               + '\nЦена: ' + new_price + '\nКоличество:',
+                                          ok_text='Принять',
+                                          cancel_text='Отменить').run()
+
+            if new_number is None:
+                continue
+
+            append_result = me_repository.Append(name=new_name,
+                                                 price=float(new_price),
+                                                 number=int(new_number),
+                                                 id_pharmacy_warehouse=pw_object.id)
+
+            if append_result != 0:
+                message_dialog(title='Ошибка',
+                               text=str(append_result),
+                               ok_text='Понятно').run()
+                continue
+
+            message_dialog(title='Уведомление',
+                           text='Запись успешно добавлена',
+                           ok_text='Понятно').run()
+        elif res == 6:
             result_of_delete = pw_repository.Delete(pw_object)
             if result_of_delete != 0:
                 message_dialog(title='Ошибка',
@@ -281,64 +374,113 @@ def CorrectTimeForPW(time):
     return False
 
 
-def PrintWorkers(pw_object: PharmacyWarhouse):
+def PrintMECommands(id_medicine_equipment: int, pharmacy_warehouse: PharmacyWarhouse):
+    current_me = me_repository.GetById(id_m_equip=id_medicine_equipment,
+                                       id_pharmacy_warehouse=pharmacy_warehouse.id)
 
-    # Список кортежей для вывода
-    w_print_list = list()
+    res = 1
 
-    # Список работников
-    w_dict = w_repository.GetAll(pw_object, wp_repository.GetAll())
+    while res is not None:
+        res = radiolist_dialog(title=pharmacy_warehouse.address + ' : ' + current_me.name,
+                               text='Что сделать?',
+                               values=[
+                                   (0, 'Показать информацию о текущем медицинском оборудовании'),
+                                   (1, 'Изменить информацию о текущем медицинском оборудовании'),
+                                   (2, 'Удалить текущее медицинское оборудование со склада')
+                               ],
+                               ok_text='Выполнить',
+                               cancel_text='Назад').run()
 
-    if not isinstance(w_dict, dict):
-        message_dialog(title='Ошибка',
-                       text=str(w_dict),
-                       ok_text='Понятно').run()
+        if res == 0:
+            message_dialog(title='Информация о текущем медицинском оборудовании',
+                           text='Название: ' + current_me.name + '\nЦена за одну штуку: ' + str(current_me.price)
+                                + '\nХранится на складе: ' + pharmacy_warehouse.address + '\nВ количестве: '
+                                + str(current_me.number) + ' штук',
+                           ok_text='Понятно').run()
+        elif res == 1:
+            new_name = input_dialog(title='Изменение информации об медицинском оборудовании',
+                                    text='Предыдущие название: ' + current_me.name + '\nНовое название:',
+                                    ok_text='Далее',
+                                    cancel_text='Отменить').run()
 
-        return None
+            if new_name is None:
+                continue
 
-    if len(w_dict) == 0:
-        message_dialog(title='Упс',
-                       text='В данном аптечном складе никто не работает',
-                       ok_text='Понятно').run()
-        return None
+            new_price = input_dialog(title='Изменение информации об медецинском оборудовании',
+                                     text='Название: ' + new_name + '\nПредыдущая цена: ' + str(current_me.price)
+                                          + '\nНовая цена:',
+                                     ok_text='Далее',
+                                     cancel_text='Отменить').run()
 
-    for key in w_dict:
-        w_print_list.append(tuple((key, w_dict[key].surname + '-' + w_dict[key].position.position)))
+            if new_price is None:
+                continue
 
-    result = radiolist_dialog(title='Список работников',
-                              text='Какого работника выбрать?',
-                              values=w_print_list,
-                              ok_text='Выбрать',
-                              cancel_text='Назад').run()
+            while new_price is not None and not new_price.isdigit():
+                new_price = input_dialog(title='Ошибка',
+                                         text='Вы ввели неправильную цену\nНазвание: ' + new_name
+                                              + '\nПредыдущая цена: ' + str(current_me.price) + '\nНовая цена:',
+                                         ok_text='Далее',
+                                         cancel_text='Отменить').run()
 
-    return result
+            if new_price is None:
+                continue
 
+            new_number = input_dialog(title='Изменение информации об медецинском оборудовании',
+                                      text='Название: ' + new_name + '\nЦена: ' + new_price
+                                           + '\nПредыдущие количество: ' + str(current_me.number) + '\nНовое количество:',
+                                      ok_text='Принять',
+                                      cancel_text='Отменить').run()
 
-def PrintWPositions() -> int:
-    wp_print_list = list()
+            if new_number is None:
+                continue
 
-    wp_dict = wp_repository.GetAll()
+            while new_number is not None and not new_number.isdigit():
+                new_number = input_dialog(title='Ошибка',
+                                          text='Вы ввели неправильное количество\nНазвание: ' + new_name
+                                               + '\nЦена: ' + new_price + '\nПредыдущие количество'
+                                               + str(current_me.number) + '\nНовое количество:',
+                                          ok_text='Принять',
+                                          cancel_text='Отменить').run()
 
-    if not isinstance(wp_dict, dict):
-        message_dialog(title='Ошибка',
-                       text=str(wp_dict),
-                       ok_text='Понятно').run()
-        return None
+            if new_number is None:
+                continue
 
-    for key in wp_dict:
-        wp_print_list.append(tuple((key, wp_dict[key].position)))
+            update_result = me_repository.Update(m_equip=MedicineEquipment(name=new_name,
+                                                                           price=float(new_price),
+                                                                           number=int(new_number)),
+                                                 id_pharmacy_warhouse=pharmacy_warehouse.id)
 
-    result = radiolist_dialog(title='Список профессий',
-                              text='Какую проффесию выбрать',
-                              values=wp_print_list,
-                              ok_text='Выбрать',
-                              cancel_text='Назад').run()
+            if update_result != 0:
+                message_dialog(title='Ошибка',
+                               text=str(update_result),
+                               ok_text='Понятно').run()
+                continue
 
-    return result
+            current_me.price = new_price
+            current_me.name = new_name
+            current_me.number = new_number
+
+            message_dialog(title='Уведомление',
+                           text='Запись успешно обнавлена',
+                           ok_text='Понятно').run()
+        elif res == 2:
+            delete_result = me_repository.Delete(pharmacy_warehouse.id, current_me.id)
+            if delete_result == 0:
+                message_dialog(title='Уведомление',
+                               text='Запись успешно удалена',
+                               ok_text='Понятно').run()
+                break
+            else:
+                message_dialog(title='Ошибка',
+                               text=str(delete_result),
+                               ok_text='Понятно').run()
+                continue
 
 
 def PrintWCommands(id_worker_object: int, f_pw_object: PharmacyWarhouse):
-    current_worker = w_repository.GetById(id=id_worker_object, pw_object=f_pw_object, wor_pos_dict=wp_repository.GetAll())
+    current_worker = w_repository.GetById(id=id_worker_object,
+                                          pw_object=f_pw_object,
+                                          wor_pos_dict=wp_repository.GetAll())
     res = 1
 
     while res is not None:
@@ -359,6 +501,7 @@ def PrintWCommands(id_worker_object: int, f_pw_object: PharmacyWarhouse):
                                 + current_worker.position.position + '\nМесто работы: '
                                 + current_worker.pharmacy_warhouse.address,
                            ok_text='Понятно').run()
+
         elif res == 1:
             new_name = input_dialog(title='Изменение информации об работнике',
                                     text='Предыдущие имя: ' + current_worker.name + '\nНовое имя:',
@@ -380,7 +523,7 @@ def PrintWCommands(id_worker_object: int, f_pw_object: PharmacyWarhouse):
 
             new_surname = input_dialog(title='Изменение информации об работнике',
                                        text='Имя: ' + new_name + '\nПредыдущая фамилия: ' + current_worker.surname
-                                            + 'Новая фамилия:',
+                                            + '\nНовая фамилия:',
                                        ok_text='Далее',
                                        cancel_text='Отменить').run()
 
@@ -398,12 +541,23 @@ def PrintWCommands(id_worker_object: int, f_pw_object: PharmacyWarhouse):
             if new_surname is None:
                 continue
 
-            new_id_pw = PrintPWarhouses()
+            new_id_pw = PrintObjects(empty_message_text='Нет ни одного аптечного склада',
+                                     radio_title='Изменение информации об работнике',
+                                     radio_text='Имя: ' + new_name + '\nФамилия: ' + new_surname
+                                                + '\nПредыдущий аптечный склад: '
+                                                + current_worker.pharmacy_warhouse.address + '\nНовый адрес:',
+                                     object_rep=pw_repository)
 
             if new_id_pw is None:
                 continue
 
-            new_wpos_id = PrintWPositions()
+            new_wpos_id = PrintObjects(empty_message_text='Почему-то не профессий',
+                                       radio_title='Изменение информации об работнике',
+                                       radio_text='Имя: ' + new_name + '\nФамилия: ' + new_surname
+                                                  + '\nАдрес работы: ' + pw_repository.GetById(new_id_pw).address
+                                                  + '\nСтарая проффесия: ' + current_worker.position.position
+                                                  + '\nНовая профессия:',
+                                       object_rep=wp_repository)
 
             if new_wpos_id is None:
                 continue

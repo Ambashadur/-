@@ -52,19 +52,20 @@ class IBaseWorkerRep(DBConnection):
             self.start_connection()
 
             append_query = sql.SQL('INSERT INTO worker(name, surname, id_warhouse, id_position) '
-                                   'VALUES ({}, {}, {}, {});').format(
+                                   'VALUES ({}, {}, {}, {}) RETURNING id;').format(
                 sql.Literal(o_name),
                 sql.Literal(o_surname),
                 sql.Literal(o_pharmacy_warhouse.id),
                 sql.Literal(o_position.id))
 
             self.cursor.execute(append_query)
+            w_id = self.cursor.fetchone()
             self.connection.commit()
 
-            new_worker = Worker(id=self.cursor.lastrowid, name=o_name,
+            new_worker = Worker(id=w_id[0], name=o_name,
                                 surname=o_surname, p_warhouse=o_pharmacy_warhouse,
                                 pos=o_position)
-
+            print(new_worker.id)
             if self.connection:
                 self.finish_connection()
                 return new_worker
