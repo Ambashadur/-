@@ -1,104 +1,74 @@
 from PharmacyWarhouse import PharmacyWarhouse
-from DBConnection import DBConnection, sql, Error
+from Medicine import Medicine
+from DBConnection import DBConnection, sql
 
 
 class IBasePharmacyWarhouseRep(DBConnection):
-    
     def GetAll(self) -> dict:
-        try:
-            self.start_connection()
-            self.cursor.execute('SELECT * FROM pharmacy_warhouse ORDER BY id;')
-            records = self.cursor.fetchall()
+        get_query = sql.SQL('SELECT * FROM pharmacy_warhouse ORDER BY id;')
+        records = self.Execute(get_query, 'All')
+        if not isinstance(records, list):
+            return records
 
-            p_warhouses = dict()
+        p_warehouses = dict()
+        for record in records:
+            p_warehouses[record[0]] = PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2])
 
-            for record in records:
-                p_warhouses[record[0]] = PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2])
-
-            if self.connection:
-                self.finish_connection()
-                return p_warhouses
-
-        except (Exception, Error) as error:
-            return error
+        return p_warehouses
 
     def GetById(self, id: int) -> PharmacyWarhouse:
-        try:
-            self.start_connection()
+        get_query = sql.SQL('SELECT * FROM pharmacy_warhouse WHERE id = {};').format(
+            sql.Literal(id))
+        record = self.Execute(get_query, 'One')
+        if not isinstance(record, tuple):
+            return record
 
-            get_query = sql.SQL('SELECT * FROM pharmacy_warhouse WHERE id = {}').format(
-                sql.Literal(id)
-            )
-
-            self.cursor.execute(get_query)
-            record = self.cursor.fetchone()
-
-            p_warhouse = PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2])
-
-            if self.connection:
-                self.finish_connection()
-                return p_warhouse
-
-        except (Exception, Error) as error:
-            return error
+        p_warehouse = PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2])
+        return p_warehouse
 
     def Append(self, o_opening_hours: str, o_address: str) -> PharmacyWarhouse:
-        try:
-            self.start_connection()
+        append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) '
+                               'VALUES ({}, {}) RETURNING id;').format(
+            sql.Literal(o_opening_hours),
+            sql.Literal(o_address))
+        pw_id = self.Execute(append_query, 'One')
+        if not isinstance(pw_id, tuple):
+            return pw_id
 
-            append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) VALUES ({}, {}) RETURNING id;').format(
-                sql.Literal(o_opening_hours),
-                sql.Literal(o_address)
-            )
-            
-            self.cursor.execute(append_query)
-            pw_id = self.cursor.fetchone()
-            self.connection.commit()
-
-            new_pharmacy_warhouse = PharmacyWarhouse(id=pw_id, op_hours=o_opening_hours, adr=o_address)
-
-            if self.connection:
-                self.finish_connection()
-                return new_pharmacy_warhouse
-                
-        except (Exception, Error) as error:
-            return error
+        new_pharmacy_warehouse = PharmacyWarhouse(id=pw_id[0], op_hours=o_opening_hours, adr=o_address)
+        return new_pharmacy_warehouse
 
     def Delete(self, p_warhouse_object: PharmacyWarhouse) -> int:
-        try:
-            self.start_connection()
-
-            delete_query = sql.SQL('DELETE FROM pharmacy_warhouse WHERE id = {};').format(
-                sql.Literal(p_warhouse_object.id)
-            )
-
-            self.cursor.execute(delete_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-            
-        except (Exception, Error) as error:
-            return error
+        delete_query = sql.SQL('DELETE FROM pharmacy_warhouse WHERE id = {};').format(
+            sql.Literal(p_warhouse_object.id))
+        return self.Execute(delete_query)
 
     def Update(self, p_warhouse_object: PharmacyWarhouse) -> int:
-        try:
-            self.start_connection()
+        update_query = sql.SQL('UPDATE pharmacy_warhouse SET address = {}, opening_hours = {} WHERE id = {};').format(
+            sql.Literal(p_warhouse_object.address),
+            sql.Literal(p_warhouse_object.opening_hours),
+            sql.Literal(p_warhouse_object.id))
+        return self.Execute(update_query)
 
-            update_query = sql.SQL('UPDATE pharmacy_warhouse SET address = {}, opening_hours = {} WHERE id = {};').format(
-                sql.Literal(p_warhouse_object.address),
-                sql.Literal(p_warhouse_object.opening_hours),
-                sql.Literal(p_warhouse_object.id)
-            )
+    def MedsInQuarantine(self, id_pharmacy_warehouse: int, mf_dict, manf_dict, sm_dict, pg_dict):
+        query = sql.SQL('SELECT * FROM medicine '
+                        'JOIN department_stores_medicine ON department_stores_medicine.id_medicine = medicine.id '
+                        'JOIN storage_department ON storage_department.id = department_stores_medicine.id_storage_department '
+                        'JOIN pharmacy_warhouse ON pharmacy_warhouse.id = storage_department.id_pharmacy_warhouse '
+                        'WHERE medicine.date_quarantine_zone IS NOT NULL '
+                        'AND medicine.return_distruction_date IS NULL '
+                        'AND pharmacy_warhouse.id = {};').format(
+            sql.Literal(id_pharmacy_warehouse))
+        records = self.Execute(query=query, mode='All')
+        if not isinstance(records, list):
+            return records
 
-            self.cursor.execute(update_query)
-            self.connection.commit()
+        meds = dict()
+        for record in records:
+            meds[record[0]] = Medicine(id=record[0], price=record[1], name=record[2], expiration_date=record[3],
+                                       series=record[4], date_quarantine_zone=record[5],
+                                       return_distruction_date=record[6], gross_weight=record[7],
+                                       medicine_form=mf_dict[record[8]], manufacturer_firm=manf_dict[record[9]],
+                                       storage_method=sm_dict[record[10]], pharmacological_group=pg_dict[record[11]])
 
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error
-
+        return meds

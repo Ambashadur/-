@@ -71,7 +71,7 @@ class IBaseMedEquipRep(DBConnection):
             self.cursor.execute(test_query)
             record = self.cursor.fetchone()
 
-            if len(record) == 0:
+            if record is None:
                 append_query = sql.SQL('INSERT INTO medicine_equipment(name, price) '
                                        'VALUES ({}, money({})) RETURNING id;').format(
                     sql.Literal(name),
@@ -170,3 +170,24 @@ class IBaseMedEquipRep(DBConnection):
 
         except (Exception, Error) as error:
             return error
+
+    def MostExpMEquip(self, id_pharmacy_warehouse: int) -> MedicineEquipment:
+        query = sql.SQL('SELECT medicine_equipment.id, medicine_equipment.name, '
+                        'medicine_equipment.price, warhouse_stores_m_equipment.number '
+                        'FROM warhouse_stores_m_equipment '
+                        'JOIN medicine_equipment '
+                        'ON medicine_equipment.id = warhouse_stores_m_equipment.id_medicine_equipment '
+                        'WHERE warhouse_stores_m_equipment.id_pharmacy_warhouse = {} '
+                        'AND medicine_equipment.price = (SELECT MAX(medicine_equipment.price) FROM medicine_equipment '
+                        'JOIN warhouse_stores_m_equipment '
+                        'ON warhouse_stores_m_equipment.id_medicine_equipment = medicine_equipment.id '
+                        'WHERE warhouse_stores_m_equipment.id_pharmacy_warhouse = {});').format(
+            sql.Literal(id_pharmacy_warehouse),
+            sql.Literal(id_pharmacy_warehouse)
+        )
+        record = self.Execute(query=query, mode='One')
+        if not isinstance(record, tuple):
+            return record
+
+        mequip = MedicineEquipment(id=record[0], name=record[1], price=record[2], number=record[3])
+        return mequip

@@ -65,7 +65,7 @@ class IBaseWorkerRep(DBConnection):
             new_worker = Worker(id=w_id[0], name=o_name,
                                 surname=o_surname, p_warhouse=o_pharmacy_warhouse,
                                 pos=o_position)
-            print(new_worker.id)
+
             if self.connection:
                 self.finish_connection()
                 return new_worker

@@ -2,6 +2,10 @@ from IBasePharmacyWarhouseRep import IBasePharmacyWarhouseRep, PharmacyWarhouse
 from IBaseWorkerPositionRep import IBaseWorkerPositionRep, WorkerPosition
 from IBaseMedEquipRep import  IBaseMedEquipRep, MedicineEquipment
 from IBaseWorkerRep import IBaseWorkerRep, Worker
+from IBaseManufacturerFirm import IBaseManufacturerFirm
+from IBaseMedicineForm import IBaseMedicineForm
+from IBasePharmacologicalGroup import IBasePharmacologicalGroup
+from IBaseStorageMethod import IBaseStorageMethod
 from prompt_toolkit.shortcuts import radiolist_dialog, message_dialog, input_dialog
 
 
@@ -10,6 +14,10 @@ pw_repository = IBasePharmacyWarhouseRep()
 wp_repository = IBaseWorkerPositionRep()
 w_repository = IBaseWorkerRep()
 me_repository = IBaseMedEquipRep()
+medform_repository = IBaseMedicineForm()
+manfirm_repository = IBaseManufacturerFirm()
+pg_repository = IBasePharmacologicalGroup()
+sm_repository = IBaseStorageMethod()
 
 
 def main():
@@ -154,8 +162,10 @@ def PrintPWCommands(id_pw_object):
                                    (2, 'Показать список работников'),
                                    (3, 'Добавить работника'),
                                    (4, 'Показать список медицинского оборудования'),
-                                   (5, 'Добавить медицинское оборудование'),
-                                   (6, 'Удалить текущий склад из списка'),
+                                   (5, 'Показать самое дорогое оборудование на этом складе'),
+                                   (6, 'Добавить медицинское оборудование'),
+                                   (7, 'Показать лекарства в карантине'),
+                                   (8, 'Удалить текущий склад из списка'),
                                ],
                                ok_text='Выполнить',
                                cancel_text='Назад'
@@ -291,6 +301,17 @@ def PrintPWCommands(id_pw_object):
                 if me_result is not None:
                     PrintMECommands(me_result, pw_object)
         elif res == 5:
+            mequip = me_repository.MostExpMEquip(pw_object.id)
+            if not isinstance(mequip, MedicineEquipment):
+                message_dialog(title='Ошибка',
+                               text=str(mequip),
+                               ok_text='Понятно').run()
+                continue
+
+            message_dialog(title='Результат',
+                           text='Название: ' + mequip.name + '\nЦена: ' + mequip.price,
+                           ok_text='Понятно').run()
+        elif res == 6:
             new_name = input_dialog(title='Добавление медицинского оборудования',
                                     text='Название:',
                                     ok_text='Далее',
@@ -341,7 +362,7 @@ def PrintPWCommands(id_pw_object):
                                                  number=int(new_number),
                                                  id_pharmacy_warehouse=pw_object.id)
 
-            if append_result != 0:
+            if not isinstance(append_result, MedicineEquipment):
                 message_dialog(title='Ошибка',
                                text=str(append_result),
                                ok_text='Понятно').run()
@@ -350,7 +371,32 @@ def PrintPWCommands(id_pw_object):
             message_dialog(title='Уведомление',
                            text='Запись успешно добавлена',
                            ok_text='Понятно').run()
-        elif res == 6:
+        elif res == 7:
+            meds = pw_repository.MedsInQuarantine(id_pharmacy_warehouse=pw_object.id,
+                                                  mf_dict=medform_repository.GetAll(),
+                                                  manf_dict=manfirm_repository.GetAll(),
+                                                  sm_dict=sm_repository.GetAll(),
+                                                  pg_dict=pg_repository.GetAll())
+            if not isinstance(meds, dict):
+                message_dialog(title='Ошибка',
+                               text=str(meds),
+                               ok_text='Понятно').run()
+                continue
+            elif len(meds) == 0:
+                message_dialog(title='Упс',
+                               text='Таких лекарств нет',
+                               ok_text='Понятно').run()
+
+            print_list = list()
+            for key in meds:
+                print_list.append(tuple((key, meds[key].name + ' - ' + str(meds[key].date_quarantine_zone))))
+
+            radiolist_dialog(title='Список лекартсв в карантине',
+                             values=print_list,
+                             ok_text='Понятно',
+                             cancel_text='Назад').run()
+
+        elif res == 8:
             result_of_delete = pw_repository.Delete(pw_object)
             if result_of_delete != 0:
                 message_dialog(title='Ошибка',
