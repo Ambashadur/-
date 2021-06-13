@@ -88,7 +88,7 @@ def main():
                    ok_text='Пока!').run()
 
 
-def PrintObjects(empty_message_text: str, radio_title: str, radio_text: str, object_rep, add_args: list = None) -> int:
+def PrintObjects(empty_message_text: str, radio_title: str, radio_text: str, object_rep, add_args: list = None):
     object_print_list = list()
 
     if isinstance(object_rep, IBaseWorkerRep):
@@ -524,7 +524,7 @@ def PrintMECommands(id_medicine_equipment: int, pharmacy_warehouse: PharmacyWarh
 
 
 def PrintWCommands(id_worker_object: int, f_pw_object: PharmacyWarhouse):
-    current_worker = w_repository.GetById(id=id_worker_object,
+    current_worker = w_repository.GetById(w_id=id_worker_object,
                                           pw_object=f_pw_object,
                                           wor_pos_dict=wp_repository.GetAll())
     res = 1

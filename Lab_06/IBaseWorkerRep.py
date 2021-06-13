@@ -3,111 +3,55 @@ from DBConnection import DBConnection, sql, Error
 
 
 class IBaseWorkerRep(DBConnection):
-
     def GetAll(self, p_warhouse_obj: PharmacyWarhouse, wor_pos_dict: dict) -> dict:
-        try:
-            self.start_connection()
+        get_query = sql.SQL('SELECT * FROM worker WHERE id_warhouse = {} ORDER BY id;').format(
+            sql.Literal(p_warhouse_obj.id))
+        records = self.Execute(query=get_query, mode='All')
+        if not isinstance(records, list):
+            return records
 
-            get_query = sql.SQL('SELECT * FROM worker WHERE id_warhouse = {} ORDER BY id;').format(
-                sql.Literal(p_warhouse_obj.id))
+        workers = dict()
+        for record in records:
+            workers[record[0]] = Worker(id=record[0], name=record[1], surname=record[2], p_warhouse=p_warhouse_obj,
+                                        pos=wor_pos_dict[record[4]])
 
-            self.cursor.execute(get_query)
-            records = self.cursor.fetchall()
-            workers = dict()
+        return workers
 
-            for record in records:
-                workers[record[0]] = Worker(id=record[0], name=record[1], surname=record[2],
-                                            p_warhouse=p_warhouse_obj, pos=wor_pos_dict[record[4]])
+    def GetById(self, w_id: int, pw_object: PharmacyWarhouse, wor_pos_dict: dict) -> Worker:
+        get_query = sql.SQL('SELECT * FROM worker WHERE id = {};').format(
+            sql.Literal(w_id))
+        record = self.Execute(query=get_query, mode='One')
+        if not isinstance(record, tuple):
+            return record
 
-            if self.connection:
-                self.finish_connection()
-                return workers
-
-        except (Exception, Error) as error:
-            return error
-
-    def GetById(self, id: int, pw_object: PharmacyWarhouse, wor_pos_dict: dict) -> Worker:
-        try:
-            self.start_connection()
-
-            get_query = sql.SQL('SELECT * FROM worker WHERE id = {}').format(
-                sql.Literal(id)
-            )
-
-            self.cursor.execute(get_query)
-            record = self.cursor.fetchone()
-
-            worker = Worker(id=record[0], name=record[1], surname=record[2],
-                            p_warhouse=pw_object, pos=wor_pos_dict[record[4]])
-
-            if self.connection:
-                self.finish_connection()
-                return worker
-
-        except (Exception, Error) as error:
-            return error
+        return Worker(id=record[0], name=record[1], surname=record[2], p_warhouse=pw_object,
+                      pos=wor_pos_dict[record[4]])
 
     def Append(self, o_name: str, o_surname: str, o_pharmacy_warhouse: PharmacyWarhouse, o_position: WorkerPosition):
-        try:
-            self.start_connection()
+        append_query = sql.SQL('INSERT INTO worker(name, surname, id_warhouse, id_position) '
+                               'VALUES ({}, {}, {}, {}) RETURNING id;').format(
+            sql.Literal(o_name),
+            sql.Literal(o_surname),
+            sql.Literal(o_pharmacy_warhouse.id),
+            sql.Literal(o_position.id))
+        w_id = self.Execute(query=append_query, mode='One')
+        if not isinstance(w_id, tuple):
+            return w_id
 
-            append_query = sql.SQL('INSERT INTO worker(name, surname, id_warhouse, id_position) '
-                                   'VALUES ({}, {}, {}, {}) RETURNING id;').format(
-                sql.Literal(o_name),
-                sql.Literal(o_surname),
-                sql.Literal(o_pharmacy_warhouse.id),
-                sql.Literal(o_position.id))
-
-            self.cursor.execute(append_query)
-            w_id = self.cursor.fetchone()
-            self.connection.commit()
-
-            new_worker = Worker(id=w_id[0], name=o_name,
-                                surname=o_surname, p_warhouse=o_pharmacy_warhouse,
-                                pos=o_position)
-
-            if self.connection:
-                self.finish_connection()
-                return new_worker
-
-        except (Exception, Error) as error:
-            return error
+        return Worker(id=w_id[0], name=o_name, surname=o_surname, p_warhouse=o_pharmacy_warhouse, pos=o_position)
 
     def Delete(self, worker_object: Worker) -> int:
-        try:
-            self.start_connection()
-
-            delete_query = sql.SQL('DELETE FROM worker WHERE id = {};').format(
-                sql.Literal(worker_object.id))
-
-            self.cursor.execute(delete_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error
+        delete_query = sql.SQL('DELETE FROM worker WHERE id = {};').format(
+            sql.Literal(worker_object.id))
+        return self.Execute(query=delete_query)
 
     def Update(self, worker_object: Worker) -> int:
-        try:
-            self.start_connection()
+        update_query = sql.SQL('UPDATE worker SET name = {}, surname = {}, id_warhouse = {}, id_position = {} '
+                               'WHERE id = {};').format(
+            sql.Literal(worker_object.name),
+            sql.Literal(worker_object.surname),
+            sql.Literal(worker_object.pharmacy_warhouse.id),
+            sql.Literal(worker_object.position.id),
+            sql.Literal(worker_object.id))
+        return self.Execute(query=update_query)
 
-            update_query = sql.SQL('UPDATE worker SET name = {}, surname = {}, id_warhouse = {}, id_position = {} '
-                                   'WHERE id = {};').format(
-                sql.Literal(worker_object.name),
-                sql.Literal(worker_object.surname),
-                sql.Literal(worker_object.pharmacy_warhouse.id),
-                sql.Literal(worker_object.position.id),
-                sql.Literal(worker_object.id))
-
-            self.cursor.execute(update_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error

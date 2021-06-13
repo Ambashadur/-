@@ -23,8 +23,7 @@ class IBasePharmacyWarhouseRep(DBConnection):
         if not isinstance(record, tuple):
             return record
 
-        p_warehouse = PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2])
-        return p_warehouse
+        return PharmacyWarhouse(id=record[0], op_hours=record[1], adr=record[2])
 
     def Append(self, o_opening_hours: str, o_address: str) -> PharmacyWarhouse:
         append_query = sql.SQL('INSERT INTO pharmacy_warhouse(opening_hours, address) '
@@ -35,8 +34,7 @@ class IBasePharmacyWarhouseRep(DBConnection):
         if not isinstance(pw_id, tuple):
             return pw_id
 
-        new_pharmacy_warehouse = PharmacyWarhouse(id=pw_id[0], op_hours=o_opening_hours, adr=o_address)
-        return new_pharmacy_warehouse
+        return PharmacyWarhouse(id=pw_id[0], op_hours=o_opening_hours, adr=o_address)
 
     def Delete(self, p_warhouse_object: PharmacyWarhouse) -> int:
         delete_query = sql.SQL('DELETE FROM pharmacy_warhouse WHERE id = {};').format(
@@ -50,10 +48,11 @@ class IBasePharmacyWarhouseRep(DBConnection):
             sql.Literal(p_warhouse_object.id))
         return self.Execute(update_query)
 
-    def MedsInQuarantine(self, id_pharmacy_warehouse: int, mf_dict, manf_dict, sm_dict, pg_dict):
+    def MedsInQuarantine(self, id_pharmacy_warehouse: int, mf_dict: dict, manf_dict: dict, sm_dict: dict, pg_dict: dict):
         query = sql.SQL('SELECT * FROM medicine '
                         'JOIN department_stores_medicine ON department_stores_medicine.id_medicine = medicine.id '
-                        'JOIN storage_department ON storage_department.id = department_stores_medicine.id_storage_department '
+                        'JOIN storage_department '
+                        'ON storage_department.id = department_stores_medicine.id_storage_department '
                         'JOIN pharmacy_warhouse ON pharmacy_warhouse.id = storage_department.id_pharmacy_warhouse '
                         'WHERE medicine.date_quarantine_zone IS NOT NULL '
                         'AND medicine.return_distruction_date IS NULL '

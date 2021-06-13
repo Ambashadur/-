@@ -29,19 +29,3 @@ class DBConnection:
 
         except (Exception, Error) as error:
             return error
-
-    @property
-    def cursor(self):
-        return self.__cursor
-
-    @property
-    def connection(self):
-        return self.__connection
-    
-    def start_connection(self):
-        self.__connection = psycopg2.connect(self.__connection_string)
-        self.__cursor = self.__connection.cursor()
-
-    def finish_connection(self):
-        self.__connection.close()
-        self.__cursor.close()

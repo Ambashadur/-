@@ -3,96 +3,42 @@ from DBConnection import DBConnection, sql, Error
 
 
 class IBaseWorkerPositionRep(DBConnection):
-
     def GetAll(self) -> dict:
-        try:
-            self.start_connection()
-            self.cursor.execute('SELECT * FROM worker_position ORDER BY id')
-            records = self.cursor.fetchall()
+        records = self.Execute(query='SELECT * FROM worker_position ORDER BY id', mode='All')
+        if not isinstance(records, list):
+            return records
 
-            worker_position = dict()
+        positions = dict()
+        for record in records:
+            positions[record[0]] = WorkerPosition(id=record[0], pos=record[1])
 
-            for record in records:
-                worker_position[record[0]] = WorkerPosition(id=record[0], pos=record[1])
+        return positions
 
-            if self.connection:
-                self.finish_connection()
-                return worker_position
+    def GetById(self, wp_id: int) -> WorkerPosition:
+        get_query = sql.SQL('SELECT * FROM worker_position WHERE id = {}').format(
+            sql.Literal(wp_id))
+        record = self.Execute(query=get_query, mode='One')
+        if not isinstance(record, tuple):
+            return record
 
-        except (Exception, Error) as error:
-            return error
-
-    def GetById(self, id: int) -> WorkerPosition:
-        try:
-            self.start_connection()
-
-            get_query = sql.SQL('SELECT * FROM worker_position WHERE id = {}').format(
-                sql.Literal(id)
-            )
-
-            self.cursor.execute(get_query)
-            record = self.cursor.fetchone()
-
-            worker_position = WorkerPosition(id=record[0], pos=record[1])
-
-            if self.connection:
-                self.finish_connection()
-                return worker_position
-
-        except (Exception, Error) as error:
-            return error
+        return WorkerPosition(id=record[0], pos=record[1])
 
     def Append(self, o_position: str) -> WorkerPosition:
-        try:
-            self.start_connection()
+        append_query = sql.SQL('INSERT INTO worker_position(position) VALUES ({}) RETURNING id;').format(
+            sql.Literal(o_position))
+        wp_id = self.Execute(query=append_query, mode='One')
+        if not isinstance(wp_id, tuple):
+            return wp_id
 
-            append_query = sql.SQL('INSERT INTO worker_position(position) VALUES ({}) RETURNING id;').format(
-                sql.Literal(o_position))
-
-            self.cursor.execute(append_query)
-            wp_id = self.cursor.fetchone()
-            self.connection.commit()
-
-            new_worker_position = WorkerPosition(id=wp_id[0], pos=o_position)
-
-            if self.connection:
-                self.finish_connection()
-                return new_worker_position
-
-        except (Exception, Error) as error:
-            return error
+        return WorkerPosition(id=wp_id[0], pos=o_position)
 
     def Delete(self, work_pos_object: WorkerPosition) -> int:
-        try:
-            self.start_connection()
-
-            delete_query = sql.SQL('DELETE FROM worker_position WHERE id = {};').format(
-                sql.Literal(work_pos_object.id))
-
-            self.cursor.execute(delete_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error
+        delete_query = sql.SQL('DELETE FROM worker_position WHERE id = {};').format(
+            sql.Literal(work_pos_object.id))
+        return self.Execute(query=delete_query)
 
     def Update(self, work_pos_object: WorkerPosition) -> int:
-        try:
-            self.start_connection()
-
-            update_query = sql.SQL('UPDATE worker_position SET position = {} WHERE id = {};').format(
-                sql.Literal(work_pos_object.position),
-                sql.Literal(work_pos_object.id))
-
-            self.cursor.execute(update_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error
+        update_query = sql.SQL('UPDATE worker_position SET position = {} WHERE id = {};').format(
+            sql.Literal(work_pos_object.position),
+            sql.Literal(work_pos_object.id))
+        return self.Execute(query=update_query)

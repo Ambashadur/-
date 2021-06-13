@@ -4,86 +4,41 @@ from DBConnection import DBConnection, sql, Error
 
 class IBaseStorageMethod(DBConnection):
     def GetAll(self) -> dict:
-        try:
-            self.start_connection()
-            self.cursor.execute('SELECT * FROM storage_method ORDER BY id')
-            records = self.cursor.fetchall()
+        records = self.Execute(query='SELECT * FROM storage_method ORDER BY id', mode='All')
+        if not isinstance(records, list):
+            return records
 
-            sm = dict()
+        methods = dict()
+        for record in records:
+            methods[record[0]] = StorageMethod(id=record[0], name=record[1])
 
-            for record in records:
-                sm[record[0]] = StorageMethod(id=record[0], name=record[1])
-
-            if self.connection:
-                self.finish_connection()
-                return sm
-
-        except (Exception, Error) as error:
-            return error
+        return methods
 
     def GetById(self, id_sm: int) -> StorageMethod:
-        try:
-            self.start_connection()
-            get_query = sql.SQL('SELECT * FROM storage_method WHERE id = {}').format(
-                sql.Literal(id_sm)
-            )
-            self.cursor.execute(get_query)
-            record = self.cursor.fetchone()
+        get_query = sql.SQL('SELECT * FROM storage_method WHERE id = {}').format(
+            sql.Literal(id_sm))
+        record = self.Execute(query=get_query, mode='One')
+        if not isinstance(record, tuple):
+            return record
 
-            storage_method = StorageMethod(id=record[0], name=record[1])
-
-            if self.connection:
-                self.finish_connection()
-                return storage_method
-
-        except (Exception, Error) as error:
-            return error
+        return StorageMethod(id=record[0], name=record[1])
 
     def Append(self, name: str) -> StorageMethod:
-        try:
-            self.start_connection()
-            append_query = sql.SQL('INSERT INTO storage_method(name) VALUES ({}) RETURNING id;').format(
-                sql.Literal(name))
-            self.cursor.execute(append_query)
-            sm_id = self.cursor.fetchone()
-            self.connection.commit()
+        append_query = sql.SQL('INSERT INTO storage_method(name) VALUES ({}) RETURNING id;').format(
+            sql.Literal(name))
+        sm_id = self.Execute(query=append_query, mode='One')
+        if not isinstance(sm_id, tuple):
+            return sm_id
 
-            new_sm = StorageMethod(id=sm_id, name=name)
-
-            if self.connection:
-                self.finish_connection()
-                return new_sm
-
-        except (Exception, Error) as error:
-            return error
+        return StorageMethod(id=sm_id[0], name=name)
 
     def Delete(self, storage_method: StorageMethod) -> int:
-        try:
-            self.start_connection()
-            delete_query = sql.SQL('DELETE FROM storage_method WHERE id = {};').format(
-                sql.Literal(storage_method.id))
-            self.cursor.execute(delete_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error
+        delete_query = sql.SQL('DELETE FROM storage_method WHERE id = {};').format(
+            sql.Literal(storage_method.id))
+        return self.Execute(query=delete_query)
 
     def Update(self, storage_method: StorageMethod) -> int:
-        try:
-            self.start_connection()
-            update_query = sql.SQL('UPDATE storage_method SET name = {} WHERE id = {};').format(
-                sql.Literal(storage_method.name),
-                sql.Literal(storage_method.id))
-            self.cursor.execute(update_query)
-            self.connection.commit()
-
-            if self.connection:
-                self.finish_connection()
-                return 0
-
-        except (Exception, Error) as error:
-            return error
+        update_query = sql.SQL('UPDATE storage_method SET name = {} WHERE id = {};').format(
+            sql.Literal(storage_method.name),
+            sql.Literal(storage_method.id))
+        return self.Execute(query=update_query)
